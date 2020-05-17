@@ -1,0 +1,6 @@
+---
+# vars file for primary
+ssh_users:
+  - name: admin
+    public_key: put your pubkey here
+    state: present

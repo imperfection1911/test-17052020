@@ -1,0 +1,80 @@
+---
+# tasks file for primary
+- name: update
+  apt:
+    upgrade: yes
+    update_cache: yes
+
+- name: install ntpd
+  apt:
+    name: ntp
+    force_apt_get: yes
+    state: present
+
+- name: enable ntp
+  systemd:
+    name: ntp
+    state: started
+    enabled: yes
+
+- name: set timezone
+  timezone:
+    name: Europe/Moscow
+
+- name: install packages
+  apt:
+    name: "{{ packages }}"
+    state: present
+
+- name: passwordless sudo
+  lineinfile:
+    path: /etc/sudoers
+    state: present
+    regexp: '^%{{ sudo_group }}'
+    line: '%{{ sudo_group }} ALL=(ALL) NOPASSWD: ALL'
+    validate: 'visudo -cf %s'
+
+- name: create users
+  user:
+    name: "{{ item.name }}"
+    group: "{{ sudo_group }}"
+    shell: /bin/bash
+    state: "{{ item.state }}"
+  when: item.state == "present"
+  with_items:
+    - "{{ ssh_users }}"
+  become: true
+
+- name: Delete user
+  user:
+    name: "{{ item.name }}"
+    state: "{{ item.state }}"
+    remove: yes
+    force: yes
+  when: item.state == "absent"
+  with_items:
+  - "{{ ssh_users }}"
+  become: true
+
+- name: add ssh key
+  authorized_key:
+    user: "{{ item.name }}"
+    state: "{{ item.state }}"
+    key: "{{ item.public_key }}"
+  when: item.state == "present"
+  with_items:
+  - "{{ ssh_users }}"
+  become: true
+
+- name: modify sysctl
+  sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+  with_dict: "{{ sysctl }}"
+
+- name: modify pam
+  pam_limits:
+    domain: '*'
+    limit_type: soft
+    limit_item: nofile
+    value: "{{ pam_file_limit }}"

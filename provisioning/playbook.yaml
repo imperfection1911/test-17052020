@@ -1,0 +1,8 @@
+- hosts: web
+  user: ubuntu
+  become: yes
+  vars:
+    docker: true
+    apt: false
+  roles:
+    - nginx
